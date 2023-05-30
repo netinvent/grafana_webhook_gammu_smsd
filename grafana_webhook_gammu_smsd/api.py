@@ -125,7 +125,7 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
 
     number = number.replace("'", r"\'")
     try:
-        supervision_name = conf_dict["supervision_name"]
+        supervision_name = config_dict["supervision_name"]
     except KeyError:
         supervision_name = "Supervision"
 
