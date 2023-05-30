@@ -131,8 +131,8 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
 
     alert_message = '{} {} (org {}):\n{} - {}'.format(supervision_name, externalURL, orgId, title, message)
     alert_message_len = len(alert_message)
-    if alert_message_len > 5000:
-        alert_message = alert_message[0:5000]
+    if alert_message_len > 2500:
+        alert_message = alert_message[0:2500]
         alert_message_len = len(alert_message)
 
     logger.info("Received alert {} for number {}".format(title, number))
@@ -147,7 +147,7 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
 
     sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
     sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
-    sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len)))
+    sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
 
     logger.info("sms_command: {}".format(sms_command))
     exit_code, output = command_runner(sms_command)
