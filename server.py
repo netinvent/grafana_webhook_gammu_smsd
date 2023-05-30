@@ -13,12 +13,12 @@ __version__ = "1.0.0"
 
 import sys
 import os
+
 import multiprocessing
 from argparse import ArgumentParser
 from grafana_webhook_gammu_smsd import configuration
 from ofunctions.logger_utils import logger_get_logger
-from grafana_webhook_gammu_smsd import api
-
+import grafana_webhook_gammu_smsd.api
 
 if __name__ == "__main__":
     _DEV = os.environ.get("_DEV", False)
