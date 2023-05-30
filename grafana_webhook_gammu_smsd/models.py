@@ -31,10 +31,10 @@ class Alert(BaseModel):
 class AlertMessage(BaseModel):
     receiver: Optional[str]
     status: str
-    alerts: Alert
-    groupLabels: dict
-    commonLables: dict
-    commonAnnotations: dict
+    alerts: List[Alert]
+    groupLabels: Optional[dict]
+    commonLabels: Optional[dict]
+    commonAnnotations: Opttional[dict]
     externalURL: str
     version: str
     groupKey: str
