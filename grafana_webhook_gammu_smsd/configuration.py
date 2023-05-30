@@ -17,7 +17,7 @@ from logging import getLogger
 
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-config_file = os.path.join(ROOT_DIR, "upgrade_server.conf")
+config_file = os.path.join(ROOT_DIR, "grafana_webhook_gammu_smsd.conf")
 
 logger = getLogger(__intname__)
 
