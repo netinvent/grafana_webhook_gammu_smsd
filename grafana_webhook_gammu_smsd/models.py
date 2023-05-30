@@ -34,7 +34,7 @@ class AlertMessage(BaseModel):
     alerts: List[Alert]
     groupLabels: Optional[dict]
     commonLabels: Optional[dict]
-    commonAnnotations: Opttional[dict]
+    commonAnnotations: Optional[dict]
     externalURL: str
     version: str
     groupKey: str
