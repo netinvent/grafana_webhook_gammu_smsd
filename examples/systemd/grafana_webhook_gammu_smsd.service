@@ -1,0 +1,17 @@
+[Unit]
+Description=Grafana webhook to Gammu SMSD server
+After=network.target
+
+[Service]
+#User=npbackup
+#Group=npbackup
+
+# Set this to whatever directory you installed the grafana_webhook_gammu_smsd to
+ExecStart=/opt/grafana_webhook_gammu_smsd/venv/bin/python /opt/grafana_webhook_gammu_smsd/server.py --config-file=/opt/grafana_webhook_gammu_smsd/upgrade_server.conf
+WorkingDirectory=/opt/grafana_webhook_gammu_smsd
+Environment="PYTHONPATH=/opt/grafana_webhook_gammu_smsd"
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
