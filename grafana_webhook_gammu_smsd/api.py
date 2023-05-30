@@ -30,7 +30,7 @@ parser.add_argument(
     type=str,
     default=None,
     required=False,
-    help="Path to upgrade_server.conf file",
+    help="Path to grafana_webhook_gammu_smsd.conf file",
 )
 args = parser.parse_args()
 if args.config_file:
@@ -43,6 +43,10 @@ logger = logging.getLogger()
 
 app = FastAPIOffline()
 security = HTTPBasic()
+
+
+def anonymous_auth():
+    return "anonymous"
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
@@ -65,12 +69,26 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 
+try:
+    if config_dict["http_server"]["no_auth"] is True:
+        logger.warning("Running without HTTP authentication")
+        auth_scheme = anonymous_auth
+    else:
+        logger.info("Running with HTTP authentication")
+        auth_scheme = get_current_username
+except (KeyError, AttributeError, TypeError):
+    auth_scheme = get_current_username
+    logger.info("Running with HTTP authentication")
+
+
 @app.get("/")
 async def api_root(auth=Depends(get_current_username)):
     return {"app": __appname__}
 
-@app.post("/sms/{number}")
-async def sms(number: str, alert: AlertMessage):
+
+@app.post("/grafana/{number}")
+async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
+#async def grafana(number: str, alert: AlertMessage, auth=auth_scheme):
 
     if not number:
         raise HTTPException(
@@ -78,38 +96,41 @@ async def sms(number: str, alert: AlertMessage):
             detail="No number set"
         )
     
-    if not alert['message']:
+    if not alert.message:
         raise HTTPException(
             stats_code=404,
             detial="No alert set"
         )
     
     try:
-        title = alert['title']
+        title = alert.title
     except KeyError:
         title = ''
 
     try:
-        orgId = alert['orgId']
+        orgId = alert.orgId
     except KeyError:
         orgId = ''
     
     try:
-        externalURL = alert['externalURL']
+        externalURL = alert.externalURL
     except KeyError:
         externalURL = ''
 
     try:
-        message: alert['message']
+        message = alert.message
     except KeyError:
         message = ''
 
-    alert_message = 'Alert from {} (org {}): {} - {}'.format(externalURL, orgId, title, message)
+    alert_message = 'Supervision Alert {} (org {}):\n{} - {}'.format(externalURL, orgId, title, message)
 
-    exit_code, output = command_runner("gammu-smsd-inject TEXT '{}' -text '{}'".format(number, message))
+    logger.info("Received alert {} for {}".format(title, number))
+    exit_code, output = command_runner("gammu-smsd-inject TEXT '{}' -text '{}' -len {}".format(number, alert_message, len(alert_message)))
     if exit_code != 0:
+        logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
         raise HTTPException(
             status_code=400,
             detail="Cannot send text: {}".format(output),
         )
+    logger.info("Sent SMS to {}".format(number))
 
