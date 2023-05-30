@@ -102,30 +102,52 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
             detial="No alert set"
         )
     
+    # Escape single quotes here so we will stay in line
     try:
-        title = alert.title
+        title = alert.title.replace("'", r"\'")
     except KeyError:
         title = ''
 
     try:
-        orgId = alert.orgId
-    except KeyError:
+        orgId = str(alert.orgId).replace("'", r"\'")
+    except (KeyError, AttributeError, ValueError, TypeError):
         orgId = ''
     
     try:
-        externalURL = alert.externalURL
+        externalURL = alert.externalURL.replace("'", r"\'")
     except KeyError:
         externalURL = ''
 
     try:
-        message = alert.message
+        message = alert.message.replace("'", r"\'")
     except KeyError:
         message = ''
 
-    alert_message = 'Supervision Alert {} (org {}):\n{} - {}'.format(externalURL, orgId, title, message)
+    number = number.replace("'", r"\'")
+    try:
+        supervision_name = conf_dict["supervision_name"]
+    except KeyError:
+        supervision_name = "Supervision"
 
-    logger.info("Received alert {} for {}".format(title, number))
-    exit_code, output = command_runner("gammu-smsd-inject TEXT '{}' -text '{}' -len {}".format(number, alert_message, len(alert_message)))
+    alert_message = '{} {} (org {}):\n{} - {}'.format(supervision_name, externalURL, orgId, title, message)
+
+    logger.info("Received alert {} for number {}".format(title, number))
+    try:
+        sms_command = config_dict["sms_command"]
+    except KeyError:
+        logger.error("No sms command defined")
+        raise HTTPException(
+            status_code=500,
+            detail="Server not configured"
+        )
+
+    sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
+    sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
+    sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(len(alert_message)))
+
+    logger.info("sms_command: {}".format(sms_command))
+    #exit_code, output = command_runner("gammu-smsd-inject TEXT '{}' -text '{}' -len {}".format(number, alert_message, len(alert_message)))
+    exit_code, output = command_runner(sms_command)
     if exit_code != 0:
         logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
         raise HTTPException(
