@@ -7,13 +7,14 @@ __intname__ = "grafana_webhook_gammu_smsd.api"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2023053001"
-__version__ = "1.0.0"
+__build__ = "2023060101"
+__version__ = "1.0.1"
 
 
 from command_runner import command_runner
 import logging
 import secrets
+from datetime import datetime
 from argparse import ArgumentParser
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -95,13 +96,13 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
             status_code=404,
             detail="No number set"
         )
-    
+
     if not alert.message:
         raise HTTPException(
             stats_code=404,
             detial="No alert set"
         )
-    
+
     # Escape single quotes here so we will stay in line
     try:
         title = alert.title.replace("'", r"\'")
@@ -112,7 +113,7 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
         orgId = str(alert.orgId).replace("'", r"\'")
     except (KeyError, AttributeError, ValueError, TypeError):
         orgId = ''
-    
+
     try:
         externalURL = alert.externalURL.replace("'", r"\'")
     except KeyError:
@@ -129,7 +130,9 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
     except KeyError:
         supervision_name = "Supervision"
 
-    alert_message = '{} {} (org {}):\n{} - {}'.format(supervision_name, externalURL, orgId, title, message)
+    timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    alert_message = '{} org {} {}:\n{} - {}'.format(supervision_name, orgId, timestr, title, message)
     alert_message_len = len(alert_message)
     if alert_message_len > 2500:
         alert_message = alert_message[0:2500]
