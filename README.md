@@ -1,6 +1,6 @@
 # Grafana webhook to gammu smsd server
 
-This (quick and dirty) tool allows to reveive grafana alerts in webhook format, and transfer it's content to an SMS gateway.  
+This (quick and dirty) tool allows to receive grafana alerts in webhook format, and transfer it's content to an SMS gateway.  
 In our case, the SMS gateway will be `gammu-smsd` but any command line driven SMS gateway can be configured.
 
 ## Setup
