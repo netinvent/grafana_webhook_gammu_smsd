@@ -7,8 +7,8 @@ __intname__ = "grafana_webhook_gammu_smsd.api"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2023060101"
-__version__ = "1.0.1"
+__build__ = "2023080901"
+__version__ = "1.0.2"
 
 
 from command_runner import command_runner
@@ -105,26 +105,26 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
 
     # Escape single quotes here so we will stay in line
     try:
-        title = alert.title.replace("'", r"\'")
+        title = alert.title.replace("'", r"-")
     except KeyError:
         title = ''
 
     try:
-        orgId = str(alert.orgId).replace("'", r"\'")
+        orgId = str(alert.orgId).replace("'", r"-")
     except (KeyError, AttributeError, ValueError, TypeError):
         orgId = ''
 
     try:
-        externalURL = alert.externalURL.replace("'", r"\'")
+        externalURL = alert.externalURL.replace("'", r"-")
     except KeyError:
         externalURL = ''
 
     try:
-        message = alert.message.replace("'", r"\'")
+        message = alert.message.replace("'", r"-")
     except KeyError:
         message = ''
 
-    number = number.replace("'", r"\'")
+    number = number.replace("'", r"-")
     try:
         supervision_name = config_dict["supervision_name"]
     except KeyError:
@@ -142,7 +142,7 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
     try:
         sms_command = config_dict["sms_command"]
     except KeyError:
-        logger.error("No sms command defined")
+        logger.error("No sms commandline tool defined")
         raise HTTPException(
             status_code=500,
             detail="Server not configured"
