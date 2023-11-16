@@ -126,7 +126,6 @@ async def grafana(numbers: str, alert: AlertMessage, auth=Depends(auth_scheme)):
     except KeyError:
         message = ''
 
-    number = number.replace("'", r"-")
     try:
         supervision_name = config_dict["supervision_name"]
     except KeyError:
@@ -140,7 +139,6 @@ async def grafana(numbers: str, alert: AlertMessage, auth=Depends(auth_scheme)):
         alert_message = alert_message[0:2500]
         alert_message_len = len(alert_message)
 
-    logger.info("Received alert {} for number {}".format(title, number))
     try:
         sms_command = config_dict["sms_command"]
     except KeyError:
@@ -151,6 +149,8 @@ async def grafana(numbers: str, alert: AlertMessage, auth=Depends(auth_scheme)):
         )
 
     for number in numbers:
+        number = number.replace("'", r"-")
+        logger.info("Received alert {} for number {}".format(title, number))
         sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
         sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
         sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
