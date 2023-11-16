@@ -7,8 +7,8 @@ __intname__ = "grafana_webhook_gammu_smsd.api"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2023080901"
-__version__ = "1.0.2"
+__build__ = "2023111601"
+__version__ = "1.1.0"
 
 
 from command_runner import command_runner
@@ -87,14 +87,13 @@ async def api_root(auth=Depends(get_current_username)):
     return {"app": __appname__}
 
 
-@app.post("/grafana/{number}")
-async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
-#async def grafana(number: str, alert: AlertMessage, auth=auth_scheme):
+@app.post("/grafana/{numbers}")
+async def grafana(numbers: str, alert: AlertMessage, auth=Depends(auth_scheme)):
 
-    if not number:
+    if not numbers:
         raise HTTPException(
             status_code=404,
-            detail="No number set"
+            detail="No phone number set"
         )
 
     if not alert.message:
@@ -102,6 +101,9 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
             stats_code=404,
             detial="No alert set"
         )
+
+    # Multiple numbers with ';' are accepted
+    numbers = numbers.split(';')
 
     # Escape single quotes here so we will stay in line
     try:
@@ -148,17 +150,18 @@ async def grafana(number: str, alert: AlertMessage, auth=Depends(auth_scheme)):
             detail="Server not configured"
         )
 
-    sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
-    sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
-    sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
+    for number in numbers:
+        sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
+        sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
+        sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
 
-    logger.info("sms_command: {}".format(sms_command))
-    exit_code, output = command_runner(sms_command)
-    if exit_code != 0:
-        logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot send text: {}".format(output),
-        )
-    logger.info("Sent SMS to {}".format(number))
+        logger.info("sms_command: {}".format(sms_command))
+        exit_code, output = command_runner(sms_command)
+        if exit_code != 0:
+            logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot send text: {}".format(output),
+            )
+        logger.info("Sent SMS to {}".format(number))
 
