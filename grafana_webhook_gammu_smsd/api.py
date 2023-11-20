@@ -8,7 +8,7 @@ __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023 NetInvent"
 __license__ = "BSD-3 Clause"
 __build__ = "2023112001"
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __appname__ = "Grafana 2 Gammu SMSD"
 
 
@@ -47,8 +47,8 @@ logger = logging.getLogger()
 app = FastAPIOffline()
 security = HTTPBasic()
 
-# Timestamp of last time we sent an sms
-LAST_SENT_TIMESTAMP = None
+# Timestamp of last time we sent an sms, per number
+LAST_SENT_TIMESTAMP = {}}
 
 
 def anonymous_auth():
@@ -157,30 +157,30 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
             detail="Server not configured"
         )
 
-    SEND_SMS = True
-    if LAST_SENT_TIMESTAMP and min_interval:
-        cur_timestamp = datetime.utcnow()
-        elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP).seconds
-        if elapsed_time_since_last_sms_sent < min_interval:
-            logger.info("Not sending an SMS since last SMS was sent {} seconds ago, with minimum interval between sms being {}".format(elapsed_time_since_last_sms_sent, min_interval))
-            SEND_SMS = False
+    for number in numbers:
+        number = number.replace("'", r"-")
+        if min_interval:
+            cur_timestamp = datetime.utcnow()
+            try:
+                elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]).seconds
+                if elapsed_time_since_last_sms_sent < min_interval:
+                    logger.info("Not sending an SMS since last SMS was sent {} seconds ago, with minimum interval between sms being {}".format(elapsed_time_since_last_sms_sent, min_interval))
+                    continue
+            except KeyError:
+                pass
+        LAST_SENT_TIMESTAMP[number] = datetime.utcnow()
+        logger.info("Received alert {} for number {}".format(title, number))
+        sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
+        sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
+        sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
 
-    if SEND_SMS:
-        LAST_SENT_TIMESTAMP = datetime.utcnow()
-        for number in numbers:
-            number = number.replace("'", r"-")
-            logger.info("Received alert {} for number {}".format(title, number))
-            sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
-            sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
-            sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
-
-            logger.info("sms_command: {}".format(sms_command))
-            exit_code, output = command_runner(sms_command)
-            if exit_code != 0:
-                logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cannot send text: {}".format(output),
-                )
-            logger.info("Sent SMS to {}".format(number))
+        logger.info("sms_command: {}".format(sms_command))
+        exit_code, output = command_runner(sms_command)
+        if exit_code != 0:
+            logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot send text: {}".format(output),
+            )
+        logger.info("Sent SMS to {}".format(number))
 
