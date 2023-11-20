@@ -48,7 +48,7 @@ app = FastAPIOffline()
 security = HTTPBasic()
 
 # Timestamp of last time we sent an sms, per number
-LAST_SENT_TIMESTAMP = {}}
+LAST_SENT_TIMESTAMP = {}
 
 
 def anonymous_auth():
