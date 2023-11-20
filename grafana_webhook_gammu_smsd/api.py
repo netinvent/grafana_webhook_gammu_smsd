@@ -164,7 +164,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
             try:
                 elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]).seconds
                 if elapsed_time_since_last_sms_sent < min_interval:
-                    logger.info("Not sending an SMS since last SMS was sent {} seconds ago, with minimum interval between sms being {}".format(elapsed_time_since_last_sms_sent, min_interval))
+                    logger.info("Not sending an SMS since last SMS to {} was sent {} seconds ago, with minimum interval between sms being {}".format(number, elapsed_time_since_last_sms_sent, min_interval))
                     continue
             except KeyError:
                 pass
