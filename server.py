@@ -99,7 +99,7 @@ if __name__ == "__main__":
                 return self.application
 
         server_args = {
-            "workers": (multiprocessing.cpu_count() * 2) + 1,
+            "workers": 1, # Don't run multiple workers since we don't have shared variables yet (multiprocessing.cpu_count() * 2) + 1,
             "bind": f"{listen}:{port}" if listen else "0.0.0.0:8080",
             "worker_class": "uvicorn.workers.UvicornWorker",
         }
