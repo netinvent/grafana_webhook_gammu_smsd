@@ -32,3 +32,13 @@ The url will be `http(s)://your_server.tld/grafana/{phone_number}` where `{phone
 HTTP method should be post, and HTTP Basic authentication should be enabled.  
 Please also use this server behind a HTTPS reverse proxy for better security.
 
+You may add multiple phone numbers by separating them with a semicolon, eg
+`http(s)://your_server.tld/grafana/0123456789;0234567890;02345678901`
+
+You may also limit the number of sent sms by setting a minimal interval between two sent smses.  
+The url will be `http(s)://your_server.tld/grafana/{phone_number}/{min_interval}`
+Example, in order to not receive more than a SMS every two hours (7200 seconds):
+
+`http(s)://your_server.tld/grafana/0123456789;0234567890;02345678901/7200`
+
+
