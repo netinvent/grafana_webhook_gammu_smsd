@@ -12,7 +12,7 @@ __version__ = "1.2.0"
 __appname__ = "Grafana 2 Gammu SMSD"
 
 
-from typing import Optional
+from typing import Union
 from command_runner import command_runner
 import logging
 import secrets
@@ -94,7 +94,7 @@ async def api_root(auth=Depends(get_current_username)):
 
 @app.post("/grafana/{numbers}")
 @app.post("/grafana/{numbers}/{min_interval}")
-async def grafana(numbers: str, min_interval: Optional[int], alert: AlertMessage, auth=Depends(auth_scheme)):
+async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: AlertMessage = None, auth=Depends(auth_scheme)):
 
     global LAST_SENT_TIMESTAMP
 
@@ -104,10 +104,10 @@ async def grafana(numbers: str, min_interval: Optional[int], alert: AlertMessage
             detail="No phone number set"
         )
 
-    if not alert.message:
+    if not alert or not alert.message:
         raise HTTPException(
-            stats_code=404,
-            detial="No alert set"
+            status_code=404,
+            detail="No alert set"
         )
 
     # Multiple numbers with ';' are accepted
