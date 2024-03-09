@@ -3,6 +3,10 @@
 This (quick and dirty) tool allows to receive grafana alerts in webhook format, and transfer it's content to an SMS gateway.  
 In our case, the SMS gateway will be `gammu-smsd` but any command line driven SMS gateway can be configured.
 
+## Requirements
+
+You need a working SMS service that can be triggered by CLI, example: gammu-smsd
+
 ## Setup
 
 Install and setup a python environment
@@ -22,6 +26,11 @@ cp /opt/grafana_webhook_gammu_smsd/examples/systemd/grafana_webhook_gammu_smsd.s
 systemctl enable grafana_webhook_gammu_smsd
 systemctl start grafana_webhook_gammu_smsd
 systemctl status grafana_webhook_gammu_smsd
+```
+
+Don't forget to setup the firewall. Example for RHEL:
+```
+firewall-cmd --add-port=8080/tcp --permanent && firewall-cmd --reload
 ```
 
 At this point, you can configure Grafana's webhook. Send endpoint is `/grafana` 
