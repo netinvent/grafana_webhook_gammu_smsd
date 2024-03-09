@@ -5,10 +5,10 @@
 
 __intname__ = "grafana_webhook_gammu_smsd.server"
 __author__ = "Orsiris de Jong"
-__copyright__ = "Copyright (C) 2023 NetInvent"
+__copyright__ = "Copyright (C) 2023-2024 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2023053001"
-__version__ = "1.0.0"
+__build__ = "2024030901"
+__version__ = "1.1.0"
 
 
 from pydantic import BaseModel
@@ -20,21 +20,21 @@ class Alert(BaseModel):
     annotations: dict
     startsAt: str
     endsAt: str
-    generatorUrl: Optional[str]
+    generatorUrl: Optional[str] = None
     fingerprint: str
     silenceURL: str
-    dashboardURL: Optional[str]
-    panelURL: Optional[str]
-    values: Optional[str]
+    dashboardURL: Optional[str] = None
+    panelURL: Optional[str] = None
+    values: Optional[str] = None
     valueString: str
 
 class AlertMessage(BaseModel):
-    receiver: Optional[str]
+    receiver: Optional[str] = None
     status: str
     alerts: List[Alert]
-    groupLabels: Optional[dict]
-    commonLabels: Optional[dict]
-    commonAnnotations: Optional[dict]
+    groupLabels: Optional[dict] = None
+    commonLabels: Optional[dict] = None
+    commonAnnotations: Optional[dict] = None
     externalURL: str
     version: str
     groupKey: str
