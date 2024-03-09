@@ -5,10 +5,10 @@
 
 __intname__ = "grafana_webhook_gammu_smsd.api"
 __author__ = "Orsiris de Jong"
-__copyright__ = "Copyright (C) 2023 NetInvent"
+__copyright__ = "Copyright (C) 2023-2024 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2023112001"
-__version__ = "1.3.0"
+__build__ = "2024030901"
+__version__ = "1.4.0"
 __appname__ = "Grafana 2 Gammu SMSD"
 
 
