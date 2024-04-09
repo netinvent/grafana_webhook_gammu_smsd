@@ -160,7 +160,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
     for number in numbers:
         number = number.replace("'", r"-")
         if min_interval:
-            cur_timestamp = datetime.utcnow()
+            cur_timestamp = datetime.now(datetime.UTC)
             try:
                 elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]).seconds
                 if elapsed_time_since_last_sms_sent < min_interval:
@@ -168,7 +168,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
                     continue
             except KeyError:
                 pass
-        LAST_SENT_TIMESTAMP[number] = datetime.utcnow()
+        LAST_SENT_TIMESTAMP[number] = datetime.now(datetime.UTC)
         logger.info("Received alert {} for number {}".format(title, number))
         sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
         sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
