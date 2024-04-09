@@ -154,7 +154,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
     except KeyError:
         supervision_name = "Supervision"
 
-    timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestr = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
     alert_message = '{} org {} {}:\n{} - {}'.format(supervision_name, orgId, timestr, title, message)
     alert_message_len = len(alert_message)
@@ -174,7 +174,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
     for number in numbers:
         number = number.replace("'", r"-")
         if min_interval:
-            cur_timestamp = datetime.now(datetime.UTC)
+            cur_timestamp = datetime.utcnow()
             try:
                 elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]).seconds
                 if elapsed_time_since_last_sms_sent < min_interval:
@@ -182,7 +182,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
                     continue
             except KeyError:
                 pass
-        LAST_SENT_TIMESTAMP[number] = datetime.now(datetime.UTC)
+        LAST_SENT_TIMESTAMP[number] = datetime.utcnow()
         logger.info("Received alert {} for number {}".format(title, number))
         parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
         parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
