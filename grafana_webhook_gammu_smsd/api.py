@@ -16,7 +16,7 @@ from typing import Union
 from command_runner import command_runner
 import logging
 import secrets
-import datetime
+from datetime import datetime
 from argparse import ArgumentParser
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.responses import JSONResponse
@@ -154,11 +154,8 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
     except KeyError:
         supervision_name = "Supervision"
 
-<<<<<<< HEAD
     timestr = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-=======
-    timestr = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
->>>>>>> 5a9413b0fa62d0da139300e700982c414da05403
+
 
     alert_message = '{} org {} {}:\n{} - {}'.format(supervision_name, orgId, timestr, title, message)
     alert_message_len = len(alert_message)
@@ -178,11 +175,8 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
     for number in numbers:
         number = number.replace("'", r"-")
         if min_interval:
-<<<<<<< HEAD
             cur_timestamp = datetime.utcnow()
-=======
-            cur_timestamp = datetime.datetime.now(datetime.UTC)
->>>>>>> 5a9413b0fa62d0da139300e700982c414da05403
+
             try:
                 elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]).seconds
                 if elapsed_time_since_last_sms_sent < min_interval:
@@ -190,11 +184,7 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
                     continue
             except KeyError:
                 pass
-<<<<<<< HEAD
         LAST_SENT_TIMESTAMP[number] = datetime.utcnow()
-=======
-        LAST_SENT_TIMESTAMP[number] = datetime.datetime.now(datetime.UTC)
->>>>>>> 5a9413b0fa62d0da139300e700982c414da05403
         logger.info("Received alert {} for number {}".format(title, number))
         parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
         parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
