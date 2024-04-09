@@ -7,8 +7,8 @@ __intname__ = "grafana_webhook_gammu_smsd.api"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023-2024 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2024030901"
-__version__ = "1.4.0"
+__build__ = "2024040901"
+__version__ = "1.5.0"
 __appname__ = "Grafana 2 Gammu SMSD"
 
 
@@ -18,7 +18,9 @@ import logging
 import secrets
 from datetime import datetime
 from argparse import ArgumentParser
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi_offline import FastAPIOffline
 from grafana_webhook_gammu_smsd import configuration
@@ -85,6 +87,18 @@ try:
 except (KeyError, AttributeError, TypeError):
     auth_scheme = get_current_username
     logger.info("Running with HTTP authentication")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Solution blatantly from https://github.com/tiangolo/fastapi/issues/3361#issuecomment-1002120988
+    allows to log 422 errors
+    """
+    exc_str = f'{exc}'.replace('\n', ' ').replace('   ', ' ')
+    logging.error(f"{request}: {exc_str}")
+    content = {'status_code': 422, 'message': exc_str, 'data': None}
+    return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
 @app.get("/")
@@ -183,4 +197,3 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
                 detail="Cannot send text: {}".format(output),
             )
         logger.info("Sent SMS to {}".format(number))
-
