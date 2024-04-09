@@ -184,12 +184,12 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
                 pass
         LAST_SENT_TIMESTAMP[number] = datetime.now(datetime.UTC)
         logger.info("Received alert {} for number {}".format(title, number))
-        sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
-        sms_command = sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
-        sms_command = sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
+        parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
+        parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
+        parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
 
-        logger.info("sms_command: {}".format(sms_command))
-        exit_code, output = command_runner(sms_command)
+        logger.info("sms_command: {}".format(parsed_sms_command))
+        exit_code, output = command_runner(parsed_sms_command)
         if exit_code != 0:
             logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
             raise HTTPException(
