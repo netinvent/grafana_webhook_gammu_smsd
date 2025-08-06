@@ -7,12 +7,12 @@ __intname__ = "grafana_webhook_gammu_smsd.api"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023-2024 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2024040901"
-__version__ = "1.5.0"
+__build__ = "2025080601"
+__version__ = "1.6.0"
 __appname__ = "Grafana 2 Gammu SMSD"
 
 
-from typing import Union
+from typing import Optional
 from command_runner import command_runner
 import logging
 import secrets
@@ -108,7 +108,8 @@ async def api_root(auth=Depends(get_current_username)):
 
 @app.post("/grafana/{numbers}")
 @app.post("/grafana/{numbers}/{min_interval}")
-async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: AlertMessage = None, auth=Depends(auth_scheme)):
+@app.post("/grafana/{numbers}/{min_interval}/{group}")
+async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optional[str] = "no", alert: AlertMessage = None, auth=Depends(auth_scheme)):
 
     global LAST_SENT_TIMESTAMP
 
@@ -156,46 +157,86 @@ async def grafana(numbers: str, min_interval: Union[int, None] = None, alert: Al
 
     timestr = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-
-    alert_message = '{} org {} {}:\n{} - {}'.format(supervision_name, orgId, timestr, title, message)
-    alert_message_len = len(alert_message)
-    if alert_message_len > 2500:
-        alert_message = alert_message[0:2500]
-        alert_message_len = len(alert_message)
-
     try:
-        sms_command = config_dict["sms_command"]
-    except KeyError:
-        logger.error("No sms commandline tool defined")
-        raise HTTPException(
-            status_code=500,
-            detail="Server not configured"
-        )
+        if group == "no":
+            alert_num = len(alert.alerts)
+            HAS_ALERTS = True
+        else:
+            alert_num = 1
+            HAS_ALERTS = False
+    except (KeyError, AttributeError, TypeError, IndexError):
+        alert_num = 1
+        HAS_ALERTS = False
 
-    for number in numbers:
-        number = number.replace("'", r"-")
-        if min_interval:
-            cur_timestamp = datetime.utcnow()
-
+    for i in range(0, alert_num):
+        if not HAS_ALERTS:
+            alert_message = '{} org {} {}:\n{}\n{}'.format(supervision_name, orgId, timestr, title, message)
+            alert_message_len = len(alert_message)
+            if alert_message_len > 2500:
+                alert_message = alert_message[0:2500]
+                alert_message_len = len(alert_message)
+        else:
+            message = None
             try:
-                elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]).seconds
-                if elapsed_time_since_last_sms_sent < min_interval:
-                    logger.info("Not sending an SMS since last SMS to {} was sent {} seconds ago, with minimum interval between sms being {}".format(number, elapsed_time_since_last_sms_sent, min_interval))
-                    continue
+                message = "Alertname: {}\n".format(alert.alerts[i].labels["alertname"])
             except KeyError:
-                pass
-        LAST_SENT_TIMESTAMP[number] = datetime.utcnow()
-        logger.info("Received alert {} for number {}".format(title, number))
-        parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
-        parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
-        parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
+                message = "Alertname: unknown\n"
+            try:
+                message += "Instance: {}\n".format(alert.alerts[i].labels["instance"])
+            except KeyError:
+                message += "Instance: unknown\n"
+            try:
+                message += "Job: {}\n".format(alert.alerts[i].labels["job"])
+            except KeyError:
+                message += "Job: unknown"
+            if message is None:
+                message = "Cannot parse alert. See grafana_webhook_gammu_smsd code"
+            alert_message = '{} org {} {}:\n{}\n{}'.format(supervision_name, orgId, timestr, title, message)
+            alert_message_len = len(alert_message)
+            if alert_message_len > 2500:
+                alert_message = alert_message[0:2500]
+                alert_lessage_len = len(alert_message)
 
-        logger.info("sms_command: {}".format(parsed_sms_command))
-        exit_code, output = command_runner(parsed_sms_command)
-        if exit_code != 0:
-            logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
+        try:
+            sms_command = config_dict["sms_command"]
+        except KeyError:
+            logger.error("No sms commandline tool defined")
             raise HTTPException(
-                status_code=400,
-                detail="Cannot send text: {}".format(output),
+                status_code=500,
+                detail="Server not configured"
             )
-        logger.info("Sent SMS to {}".format(number))
+
+        for number in numbers:
+            number = number.replace("'", r"-")
+            if min_interval:
+                cur_timestamp = datetime.utcnow()
+
+                try:
+                    elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]["date"]).seconds
+                    if elapsed_time_since_last_sms_sent < min_interval:
+                        logger.info("Not sending an SMS since last SMS to {} was sent {} seconds ago, with minimum interval between sms being {}".format(number, elapsed_time_since_last_sms_sent, min_interval))
+                        continue
+
+                except KeyError:
+                    pass
+            LAST_SENT_TIMESTAMP[number] = {
+                "date": datetime.utcnow()
+            }
+
+            if HAS_ALERTS:
+                LAST_SENT_TIMESTAMP[number]["labels"] = str(alert.alerts[i].labels)
+
+            logger.info("Received alert {} for number {}".format(title, number))
+            parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
+            parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
+            parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
+
+            logger.info("sms_command: {}".format(parsed_sms_command))
+            exit_code, output = command_runner(parsed_sms_command)
+            if exit_code != 0:
+                logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot send text: {}".format(output),
+                )
+            logger.info("Sent SMS to {}".format(number))
