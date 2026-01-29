@@ -5,10 +5,10 @@
 
 __intname__ = "grafana_webhook_gammu_smsd.server"
 __author__ = "Orsiris de Jong"
-__copyright__ = "Copyright (C) 2023 NetInvent"
+__copyright__ = "Copyright (C) 2023-2026 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2023053001"
-__version__ = "1.0.0"
+__build__ = "2026012901"
+__version__ = "1.0.1"
 
 
 import sys
@@ -16,8 +16,11 @@ import os
 
 import multiprocessing
 from argparse import ArgumentParser
-from grafana_webhook_gammu_smsd import configuration
+from __debug__ import _DEBUG
 from ofunctions.logger_utils import logger_get_logger
+LOG_FILE = f"/var/log/{__intname__}.log"
+logger = logger_get_logger(log_file=LOG_FILE, debug=_DEBUG)
+from grafana_webhook_gammu_smsd import configuration
 import grafana_webhook_gammu_smsd.api
 
 if __name__ == "__main__":
@@ -60,7 +63,6 @@ if __name__ == "__main__":
     except (TypeError, KeyError):
         port = None
 
-    logger = logger_get_logger()
     # Cannot use gunicorn on Windows
     if _DEV or os.name == 'nt':
         logger.info("Running dev version")

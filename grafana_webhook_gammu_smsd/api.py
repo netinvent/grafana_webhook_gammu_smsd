@@ -124,6 +124,7 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
             status_code=404,
             detail="No alert set"
         )
+    logger.debug(f"Alert\n{alert}")
 
     # Multiple numbers with ';' are accepted
     numbers = numbers.split(';')
