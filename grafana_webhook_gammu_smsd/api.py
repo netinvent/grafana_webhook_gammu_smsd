@@ -1,22 +1,22 @@
 #! /usr/bin/env python
 #  -*- coding: utf-8 -*-
 #
-# This file is part of grafana_webhook_gammu_smsd
+# This file is part of grafana_webhook_smsd
 
-__intname__ = "grafana_webhook_gammu_smsd.api"
+__intname__ = "grafana_webhook_api.api"
 __author__ = "Orsiris de Jong"
-__copyright__ = "Copyright (C) 2023-2024 NetInvent"
+__copyright__ = "Copyright (C) 2023-2026 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2025080601"
-__version__ = "1.6.0"
-__appname__ = "Grafana 2 Gammu SMSD"
+__build__ = "2026013001"
+__version__ = "2.0.0"
+__appname__ = "Grafana Alerts to commands"
 
 
 from typing import Optional
 from command_runner import command_runner
 import logging
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from argparse import ArgumentParser
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.responses import JSONResponse
@@ -109,95 +109,95 @@ async def api_root(auth=Depends(get_current_username)):
 @app.post("/grafana/{numbers}")
 @app.post("/grafana/{numbers}/{min_interval}")
 @app.post("/grafana/{numbers}/{min_interval}/{group}")
-async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optional[str] = "no", alert: AlertMessage = None, auth=Depends(auth_scheme)):
-
-    global LAST_SENT_TIMESTAMP
-
-    if not numbers:
-        raise HTTPException(
-            status_code=404,
-            detail="No phone number set"
-        )
-
-    if not alert or not alert.message:
-        raise HTTPException(
-            status_code=404,
-            detail="No alert set"
-        )
-    logger.debug(f"Alert\n{alert}")
-
-    # Multiple numbers with ';' are accepted
-    numbers = numbers.split(';')
-
-
-    # Escape single quotes here so we will stay in line
+async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optional[str] = "yes", alert: AlertMessage = None, auth=Depends(auth_scheme)):
     try:
-        title = alert.title.replace("'", r"-")
-    except KeyError:
-        title = ''
 
-    try:
-        orgId = str(alert.orgId).replace("'", r"-")
-    except (KeyError, AttributeError, ValueError, TypeError):
-        orgId = ''
+        global LAST_SENT_TIMESTAMP
 
-    try:
-        externalURL = alert.externalURL.replace("'", r"-")
-    except KeyError:
-        externalURL = ''
+        if not numbers:
+            raise HTTPException(
+                status_code=404,
+                detail="No phone number set"
+            )
 
-    try:
-        message = alert.message.replace("'", r"-")
-    except KeyError:
-        message = ''
+        if not alert or not alert.message:
+            raise HTTPException(
+                status_code=404,
+                detail="No alert set"
+            )
+        logger.debug(f"Alert\n{alert}")
 
-    try:
-        supervision_name = config_dict["supervision_name"]
-    except KeyError:
-        supervision_name = "Supervision"
+        # Multiple numbers with ';' are accepted
+        numbers = numbers.split(';')
 
-    timestr = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-    try:
-        if group == "no":
-            alert_num = len(alert.alerts)
-            HAS_ALERTS = True
-        else:
-            alert_num = 1
-            HAS_ALERTS = False
-    except (KeyError, AttributeError, TypeError, IndexError):
-        alert_num = 1
-        HAS_ALERTS = False
+        # Escape single quotes here so we will stay in line
+        try:
+            title = alert.title.replace("'", r"-")
+        except KeyError:
+            title = ''
 
-    for i in range(0, alert_num):
-        if not HAS_ALERTS:
-            alert_message = '{} org {} {}:\n{}\n{}'.format(supervision_name, orgId, timestr, title, message)
-            alert_message_len = len(alert_message)
-            if alert_message_len > 2500:
-                alert_message = alert_message[0:2500]
-                alert_message_len = len(alert_message)
-        else:
-            message = None
-            try:
-                message = "Alertname: {}\n".format(alert.alerts[i].labels["alertname"])
-            except KeyError:
-                message = "Alertname: unknown\n"
-            try:
-                message += "Instance: {}\n".format(alert.alerts[i].labels["instance"])
-            except KeyError:
-                message += "Instance: unknown\n"
-            try:
-                message += "Job: {}\n".format(alert.alerts[i].labels["job"])
-            except KeyError:
-                message += "Job: unknown"
-            if message is None:
-                message = "Cannot parse alert. See grafana_webhook_gammu_smsd code"
-            alert_message = '{} org {} {}:\n{}\n{}'.format(supervision_name, orgId, timestr, title, message)
-            alert_message_len = len(alert_message)
-            if alert_message_len > 2500:
-                alert_message = alert_message[0:2500]
-                alert_lessage_len = len(alert_message)
+        try:
+            orgId = str(alert.orgId).replace("'", r"-")
+        except (KeyError, AttributeError, ValueError, TypeError):
+            orgId = ''
 
+        try:
+            externalURL = alert.externalURL.replace("'", r"-")
+        except KeyError:
+            externalURL = ''
+
+        try:
+            message = alert.message.replace("'", r"-")
+        except KeyError:
+            message = ''
+
+        try:
+            supervision_name = config_dict["supervision_name"]
+        except KeyError:
+            supervision_name = "Supervision"
+
+        try:
+            alert_max_length = config_dict["alert_max_length"]
+        except KeyError:
+            alert_max_length = 2500
+
+        try:
+            hard_min_interval = config_dict["min_interval"]
+        except KeyError:
+            hard_min_interval = None
+
+        #timestr = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+        #alert_message = '{} org {} {}:\n{}\n{}'.format(supervision_name, orgId, timestr, title, message)
+        alert_header = '{} org {}:\n{}\n{}'.format(supervision_name, orgId, title, message)
+
+        extracted_alerts = []
+        # Alert may not contain sub alerts
+        try:
+            for i in range(0, len(alert.alerts)):
+                try:
+                    extracted_alerts[i] = "Alert: {}\n".format(alert.alerts[i].labels["alertname"])
+                except KeyError:
+                    pass
+                try:
+                    extracted_alerts[i] += "Rule: {}\n".format(alert.alerts[i].labels["rulename"])
+                except KeyError:
+                    pass
+                try:
+                    extracted_alerts[i] += "Instance: {}\n".format(alert.alerts[i].labels["instance"])
+                except KeyError:
+                    pass
+                try:
+                    extracted_alerts[i] += "Job: {}\n".format(alert.alerts[i].labels["job"])
+                except KeyError:
+                    pass
+                if extracted_alerts[i] is None:
+                    extracted_alerts[i] = f"Cannot parse alert. See {__appname__} code"
+        except (KeyError, AttributeError, TypeError, IndexError):
+            pass
+
+        # Preflight check
         try:
             sms_command = config_dict["sms_command"]
         except KeyError:
@@ -207,10 +207,21 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
                 detail="Server not configured"
             )
 
+        alert_message = alert_header
+        for i in range(0, len(extracted_alerts)):
+            alert_message += f'\n{extracted_alerts[i]}'
+
+        # Reduce alert to a specific length
+        alert_message_len = len(alert_message)
+        if alert_message_len > alert_max_length:
+            alert_message = alert_message[0:alert_max_length]
+            alert_message_len = len(alert_message)
+
+        # Send alerts
         for number in numbers:
             number = number.replace("'", r"-")
             if min_interval:
-                cur_timestamp = datetime.utcnow()
+                cur_timestamp = datetime.now(timezone.utc)
 
                 try:
                     elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]["date"]).seconds
@@ -221,11 +232,11 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
                 except KeyError:
                     pass
             LAST_SENT_TIMESTAMP[number] = {
-                "date": datetime.utcnow()
+                "date": datetime.now(timezone.utc)
             }
 
-            if HAS_ALERTS:
-                LAST_SENT_TIMESTAMP[number]["labels"] = str(alert.alerts[i].labels)
+            #if HAS_ALERTS:
+            #    LAST_SENT_TIMESTAMP[number]["labels"] = str(alert.alerts[i].labels)
 
             logger.info("Received alert {} for number {}".format(title, number))
             parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
@@ -241,3 +252,10 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
                     detail="Cannot send text: {}".format(output),
                 )
             logger.info("Sent SMS to {}".format(number))
+    except Exception as exc:
+        exc_str = f"Exception {exc} occured"
+        logger.error(exc_str, exc_info=True)
+        raise HTTPException(
+                status_code=500,
+                detail=exc_str
+            )
