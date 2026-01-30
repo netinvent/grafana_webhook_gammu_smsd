@@ -2,7 +2,7 @@
 
 # This script updates /etc/gammu-smsdrc file with first detected USB modem
 # Really quick and dirty (TM) 2022-2026 Orsiris de Jong - ozy [at] netpower dot fr
-SCRIPTVER=2026012901
+SCRIPTVER=2026013001
 
 log_file="/var/log/modem_update.log"
 gammu_config_file="/etc/gammu-smsdrc"
@@ -21,7 +21,7 @@ function log {
 }
 
 
-if ! type picocom > /dev/null 2>1; then
+if ! type picocom > /dev/null 2&>1; then
     log "No picocom available"
     exit 1
 fi
