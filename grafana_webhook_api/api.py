@@ -21,9 +21,9 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi_offline import FastAPIOffline
-from grafana_webhook_gammu_smsd import configuration
-from grafana_webhook_gammu_smsd.models import AlertMessage, Message
-from grafana_webhook_gammu_smsd.sms import send_sms
+from grafana_webhook_api import configuration
+from grafana_webhook_api.models import AlertMessage, Message
+from grafana_webhook_api.sms import send_sms
 
 # Make sure we load given config files again
 parser = ArgumentParser()
@@ -34,7 +34,7 @@ parser.add_argument(
     type=str,
     default=None,
     required=False,
-    help="Path to grafana_webhook_gammu_smsd.conf file",
+    help="Path to grafana_webhook_api.conf file",
 )
 args = parser.parse_args()
 if args.config_file:

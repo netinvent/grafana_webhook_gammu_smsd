@@ -12,7 +12,7 @@ __build__ = "2026013001"
 import logging
 from datetime import datetime, timezone, timedelta
 from command_runner import command_runner
-from grafana_webhook_gammu_smsd import configuration
+from grafana_webhook_api import configuration
 
 
 config_dict = configuration.load_config()

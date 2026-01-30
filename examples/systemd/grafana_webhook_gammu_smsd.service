@@ -1,15 +1,15 @@
 [Unit]
-Description=Grafana webhook to Gammu SMSD server
+Description=Grafana webhook API server
 After=network.target
 
 [Service]
 #User=myuser
 #Group=myuser
 
-# Set this to whatever directory you installed the grafana_webhook_gammu_smsd to
-ExecStart=/opt/grafana_webhook_gammu_smsd/venv/bin/python /opt/grafana_webhook_gammu_smsd/server.py --config-file=/opt/grafana_webhook_gammu_smsd/upgrade_server.conf
-WorkingDirectory=/opt/grafana_webhook_gammu_smsd
-Environment="PYTHONPATH=/opt/grafana_webhook_gammu_smsd"
+# Set this to whatever directory you installed the grafana_webhook_api to
+ExecStart=/opt/grafana_webhook_api/venv/bin/python /opt/grafana_webhook_api/server.py --config-file=/opt/grafana_webhook_api/grafana_webook_api.conf
+WorkingDirectory=/opt/grafana_webhook_api
+Environment="PYTHONPATH=/opt/grafana_webhook_api"
 Restart=always
 RestartSec=60
 

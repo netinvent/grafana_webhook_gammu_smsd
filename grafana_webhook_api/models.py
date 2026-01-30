@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 #  -*- coding: utf-8 -*-
 #
-# This file is part of grafana_webhook_gammu_smsd
+# This file is part of grafana_webhook_api
 
-__intname__ = "grafana_webhook_gammu_smsd.server"
+__intname__ = "grafana_webhook_api.server"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023-2024 NetInvent"
 __license__ = "BSD-3 Clause"

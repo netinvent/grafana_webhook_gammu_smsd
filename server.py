@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 #  -*- coding: utf-8 -*-
 #
-# This file is part of grafana_webhook_gammu_smsd
+# This file is part of grafana_webhook_api
 
-__intname__ = "grafana_webhook_gammu_smsd.server"
+__intname__ = "grafana_webhook_api.server"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023-2026 NetInvent"
 __license__ = "BSD-3 Clause"
@@ -21,15 +21,15 @@ from ofunctions.logger_utils import logger_get_logger
 
 LOG_FILE = f"/var/log/{__intname__}.log"
 logger = logger_get_logger(log_file=LOG_FILE, debug=_DEBUG)
-from grafana_webhook_gammu_smsd import configuration
-import grafana_webhook_gammu_smsd.api
+from grafana_webhook_api import configuration
+import grafana_webhook_api.api
 
 if __name__ == "__main__":
     _DEV = os.environ.get("_DEV", False)
 
     parser = ArgumentParser(
         prog="{} {} - {}".format(__intname__, __copyright__, __license__),
-        description="""grafana_webhook_gammu_smsd server""",
+        description="""grafana_webhook_api server""",
     )
 
     parser.add_argument(
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         required=False,
-        help="Path to grafana_webhook_gammu_smsd.conf file",
+        help="Path to grafana_webhook_api.conf file",
     )
 
     args = parser.parse_args()
@@ -109,9 +109,9 @@ if __name__ == "__main__":
 
     try:
         if _DEV or os.name == "nt":
-            uvicorn.run("grafana_webhook_gammu_smsd.api:app", **server_args)
+            uvicorn.run("grafana_webhook_api.api:app", **server_args)
         else:
-            StandaloneApplication(grafana_webhook_gammu_smsd.api.app, server_args).run()
+            StandaloneApplication(grafana_webhook_api.api.app, server_args).run()
     except KeyboardInterrupt as exc:
         logger.error("Program interrupted by keyoard: {}".format(exc))
         sys.exit(200)
