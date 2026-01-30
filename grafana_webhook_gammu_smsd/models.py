@@ -18,6 +18,7 @@ These models were tested on Grafana 9x and 10x alerts.
 from pydantic import BaseModel
 from typing import List, Optional, Any
 
+
 class Alert(BaseModel):
     status: Optional[str] = None
     labels: dict

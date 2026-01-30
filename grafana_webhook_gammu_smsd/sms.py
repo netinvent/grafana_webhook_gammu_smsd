@@ -22,6 +22,7 @@ logger = logging.getLogger()
 # Variable to keep track of last sends
 LAST_SENT = {"global": []}
 
+
 def send_sms(number: str, message: str, min_interval: int = None):
     global LAST_SENT
 
@@ -57,29 +58,37 @@ def send_sms(number: str, message: str, min_interval: int = None):
     cur_timestamp = datetime.now(timezone.utc)
     if min_interval or hard_min_interval:
         try:
-            elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT[number]["date"]).seconds
+            elapsed_time_since_last_sms_sent = (
+                cur_timestamp - LAST_SENT[number]["date"]
+            ).seconds
         except KeyError:
             elapsed_time_since_last_sms_sent = None
         if min_interval and elapsed_time_since_last_sms_sent is not None:
             if elapsed_time_since_last_sms_sent < min_interval:
-                logger.info(f"Client side min_interval for number {number} not reached ({elapsed_time_since_last_sms_sent}). Not sending this SMS")
+                logger.info(
+                    f"Client side min_interval for number {number} not reached ({elapsed_time_since_last_sms_sent}). Not sending this SMS"
+                )
                 return False
         if hard_min_interval and elapsed_time_since_last_sms_sent is not None:
             if elapsed_time_since_last_sms_sent < hard_min_interval:
-                logger.info(f"Server side min_interval for number {number} not reached ({elapsed_time_since_last_sms_sent}). Not sending this SMS")
+                logger.info(
+                    f"Server side min_interval for number {number} not reached ({elapsed_time_since_last_sms_sent}). Not sending this SMS"
+                )
                 return False
     if global_interval and global_count:
         try:
-            if LAST_SENT["global"][-global_count] >= (cur_timestamp - timedelta(seconds=global_interval)):
-                logger.info(f"Global rate reached ({global_count}/{global_interval}s). Not sending this SMS")
+            if LAST_SENT["global"][-global_count] >= (
+                cur_timestamp - timedelta(seconds=global_interval)
+            ):
+                logger.info(
+                    f"Global rate reached ({global_count}/{global_interval}s). Not sending this SMS"
+                )
                 return False
         except (KeyError, IndexError):
             pass
-    
+
     # Update per number last sent date
-    LAST_SENT[number] = {
-        "date": cur_timestamp
-    }
+    LAST_SENT[number] = {"date": cur_timestamp}
     if global_interval and global_count:
         # Update global last sent date
         LAST_SENT["global"].append(cur_timestamp)
@@ -89,12 +98,16 @@ def send_sms(number: str, message: str, min_interval: int = None):
     # Reduce sms to a specific length
     message_len = len(message)
     if message_len > sms_max_length:
-        message = message[0:(sms_max_length-3)] + '...'
+        message = message[0 : (sms_max_length - 3)] + "..."
         message_len = len(message_len)
 
     parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
-    parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(message))
-    parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE_LEN}", str(message_len))
+    parsed_sms_command = parsed_sms_command.replace(
+        "${ALERT_MESSAGE}", "'{}'".format(message)
+    )
+    parsed_sms_command = parsed_sms_command.replace(
+        "${ALERT_MESSAGE_LEN}", str(message_len)
+    )
 
     logger.info("sms_command: {}".format(parsed_sms_command))
     exit_code, output = command_runner(parsed_sms_command)

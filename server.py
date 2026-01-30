@@ -18,6 +18,7 @@ import multiprocessing
 from argparse import ArgumentParser
 from __debug__ import _DEBUG
 from ofunctions.logger_utils import logger_get_logger
+
 LOG_FILE = f"/var/log/{__intname__}.log"
 logger = logger_get_logger(log_file=LOG_FILE, debug=_DEBUG)
 from grafana_webhook_gammu_smsd import configuration
@@ -64,7 +65,7 @@ if __name__ == "__main__":
         port = None
 
     # Cannot use gunicorn on Windows
-    if _DEV or os.name == 'nt':
+    if _DEV or os.name == "nt":
         logger.info("Running dev version")
         import uvicorn
 
@@ -101,14 +102,13 @@ if __name__ == "__main__":
                 return self.application
 
         server_args = {
-            "workers": 1, # Don't run multiple workers since we don't have shared variables yet (multiprocessing.cpu_count() * 2) + 1,
+            "workers": 1,  # Don't run multiple workers since we don't have shared variables yet (multiprocessing.cpu_count() * 2) + 1,
             "bind": f"{listen}:{port}" if listen else "0.0.0.0:8080",
             "worker_class": "uvicorn.workers.UvicornWorker",
         }
 
-    
     try:
-        if _DEV or os.name == 'nt':
+        if _DEV or os.name == "nt":
             uvicorn.run("grafana_webhook_gammu_smsd.api:app", **server_args)
         else:
             StandaloneApplication(grafana_webhook_gammu_smsd.api.app, server_args).run()

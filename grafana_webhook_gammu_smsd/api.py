@@ -94,10 +94,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     Solution blatantly from https://github.com/tiangolo/fastapi/issues/3361#issuecomment-1002120988
     allows to log 422 errors
     """
-    exc_str = f'{exc}'.replace('\n', ' ').replace('   ', ' ')
+    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
     logging.error(f"{request}: {exc_str}")
-    content = {'status_code': 422, 'message': exc_str, 'data': None}
-    return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    content = {"status_code": 422, "message": exc_str, "data": None}
+    return JSONResponse(
+        content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+    )
 
 
 @app.get("/")
@@ -108,46 +110,45 @@ async def api_root(auth=Depends(get_current_username)):
 @app.post("/grafana/{numbers}")
 @app.post("/grafana/{numbers}/{min_interval}")
 @app.post("/grafana/{numbers}/{min_interval}/{group}")
-async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optional[str] = "yes", alert: AlertMessage = None, auth=Depends(auth_scheme)):
+async def grafana(
+    numbers: str,
+    min_interval: Optional[int] = None,
+    group: Optional[str] = "yes",
+    alert: AlertMessage = None,
+    auth=Depends(auth_scheme),
+):
     global LAST_SENT_TIMESTAMP
 
     if not numbers:
-        raise HTTPException(
-            status_code=404,
-            detail="No phone number set"
-        )
+        raise HTTPException(status_code=404, detail="No phone number set")
 
     if not alert or not alert.message:
-        raise HTTPException(
-            status_code=404,
-            detail="No alert set"
-        )
+        raise HTTPException(status_code=404, detail="No alert set")
     logger.debug(f"Alert\n{alert}")
 
     # Multiple numbers with ';' are accepted
-    numbers = numbers.split(';')
-
+    numbers = numbers.split(";")
 
     # Escape single quotes here so we will stay in line
     try:
         title = alert.title.replace("'", r"-")
     except KeyError:
-        title = ''
+        title = ""
 
     try:
         orgId = str(alert.orgId).replace("'", r"-")
     except (KeyError, AttributeError, ValueError, TypeError):
-        orgId = ''
+        orgId = ""
 
     try:
         externalURL = alert.externalURL.replace("'", r"-")
     except KeyError:
-        externalURL = ''
+        externalURL = ""
 
     try:
         message = alert.message.replace("'", r"-")
     except KeyError:
-        message = ''
+        message = ""
 
     try:
         supervision_name = config_dict["supervision_name"]
@@ -155,26 +156,36 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
         supervision_name = "Supervision"
 
     try:
-        alert_header = '{} org {}:\n{}\n{}'.format(supervision_name, orgId, title, message)
+        alert_header = "{} org {}:\n{}\n{}".format(
+            supervision_name, orgId, title, message
+        )
 
         extracted_alerts = []
         # Alert may not contain sub alerts
         try:
             for i in range(0, len(alert.alerts)):
                 try:
-                    extracted_alerts[i] = "Alert: {}\n".format(alert.alerts[i].labels["alertname"])
+                    extracted_alerts[i] = "Alert: {}\n".format(
+                        alert.alerts[i].labels["alertname"]
+                    )
                 except KeyError:
                     pass
                 try:
-                    extracted_alerts[i] += "Rule: {}\n".format(alert.alerts[i].labels["rulename"])
+                    extracted_alerts[i] += "Rule: {}\n".format(
+                        alert.alerts[i].labels["rulename"]
+                    )
                 except KeyError:
                     pass
                 try:
-                    extracted_alerts[i] += "Instance: {}\n".format(alert.alerts[i].labels["instance"])
+                    extracted_alerts[i] += "Instance: {}\n".format(
+                        alert.alerts[i].labels["instance"]
+                    )
                 except KeyError:
                     pass
                 try:
-                    extracted_alerts[i] += "Job: {}\n".format(alert.alerts[i].labels["job"])
+                    extracted_alerts[i] += "Job: {}\n".format(
+                        alert.alerts[i].labels["job"]
+                    )
                 except KeyError:
                     pass
                 if extracted_alerts[i] is None:
@@ -187,14 +198,11 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
             config_dict["sms_command"]
         except KeyError:
             logger.error("No sms commandline tool defined")
-            raise HTTPException(
-                status_code=500,
-                detail="Server not configured"
-            )
+            raise HTTPException(status_code=500, detail="Server not configured")
 
         alert_message = alert_header
         for i in range(0, len(extracted_alerts)):
-            alert_message += f'\n{extracted_alerts[i]}'
+            alert_message += f"\n{extracted_alerts[i]}"
 
         # Send alerts
         for number in numbers:
@@ -202,56 +210,61 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
             logger.info("Received alert {} for number {}".format(title, number))
             result = send_sms(number, message)
             if not result:
-                content = {'status_code': 402, 'message': "Cannot send text to: {}".format(number), 'data': None}
-                return JSONResponse(content=content, status_code=status.HTTP_402_PAYMENT_REQUIRED)
-            content = {'status_code': 200, 'message': "Message sent to: {}".format(number), 'data': None}
+                content = {
+                    "status_code": 402,
+                    "message": "Cannot send text to: {}".format(number),
+                    "data": None,
+                }
+                return JSONResponse(
+                    content=content, status_code=status.HTTP_402_PAYMENT_REQUIRED
+                )
+            content = {
+                "status_code": 200,
+                "message": "Message sent to: {}".format(number),
+                "data": None,
+            }
             return JSONResponse(content=content, status_code=status.HTTP_200_OK)
 
     except Exception as exc:
         exc_str = f"Exception {exc} occured"
         logger.error(exc_str, exc_info=True)
-        raise HTTPException(
-                status_code=500,
-                detail=exc_str
-            )
+        raise HTTPException(status_code=500, detail=exc_str)
 
 
 @app.post("/send/{numbers}")
 async def grafana(numbers: str, message: Message = None, auth=Depends(auth_scheme)):
 
     if not numbers:
-        raise HTTPException(
-            status_code=404,
-            detail="No phone number set"
-        )
+        raise HTTPException(status_code=404, detail="No phone number set")
     if not message:
-        raise HTTPException(
-            status_code=404,
-            detail="No message set"
-        )
+        raise HTTPException(status_code=404, detail="No message set")
     if not message.message:
-        raise HTTPException(
-            status_code=404,
-            detail="No message content"
-        )
-    
+        raise HTTPException(status_code=404, detail="No message content")
+
     try:
         logger.debug(f"Message: {message}")
         # Multiple numbers with ';' are accepted
-        numbers = numbers.split(';')
+        numbers = numbers.split(";")
         for number in numbers:
             number = number.replace("'", r"-")
             logger.info("Received direct send request for number {}".format(number))
             result = send_sms(number, message.message)
             if not result:
-                content = {'status_code': 402, 'message': "Cannot send text to: {}".format(number), 'data': None}
-                return JSONResponse(content=content, status_code=status.HTTP_402_PAYMENT_REQUIRED)
-            content = {'status_code': 200, 'message': "Message sent to: {}".format(number), 'data': None}
+                content = {
+                    "status_code": 402,
+                    "message": "Cannot send text to: {}".format(number),
+                    "data": None,
+                }
+                return JSONResponse(
+                    content=content, status_code=status.HTTP_402_PAYMENT_REQUIRED
+                )
+            content = {
+                "status_code": 200,
+                "message": "Message sent to: {}".format(number),
+                "data": None,
+            }
             return JSONResponse(content=content, status_code=status.HTTP_200_OK)
     except Exception as exc:
         exc_str = f"Exception {exc} occured"
         logger.error(exc_str, exc_info=True)
-        raise HTTPException(
-                status_code=500,
-                detail=exc_str
-            )
+        raise HTTPException(status_code=500, detail=exc_str)
