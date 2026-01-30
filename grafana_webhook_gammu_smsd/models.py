@@ -48,3 +48,7 @@ class AlertMessage(BaseModel):
     title: str
     state: str
     message: str
+
+
+class Message(BaseModel):
+    message: Optional[str] = None

@@ -13,10 +13,8 @@ __appname__ = "Grafana Alerts to commands"
 
 
 from typing import Optional
-from command_runner import command_runner
 import logging
 import secrets
-from datetime import datetime, timezone
 from argparse import ArgumentParser
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.responses import JSONResponse
@@ -24,7 +22,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi_offline import FastAPIOffline
 from grafana_webhook_gammu_smsd import configuration
-from grafana_webhook_gammu_smsd.models import AlertMessage
+from grafana_webhook_gammu_smsd.models import AlertMessage, Message
+from grafana_webhook_gammu_smsd.sms import send_sms
 
 # Make sure we load given config files again
 parser = ArgumentParser()
@@ -110,66 +109,52 @@ async def api_root(auth=Depends(get_current_username)):
 @app.post("/grafana/{numbers}/{min_interval}")
 @app.post("/grafana/{numbers}/{min_interval}/{group}")
 async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optional[str] = "yes", alert: AlertMessage = None, auth=Depends(auth_scheme)):
+    global LAST_SENT_TIMESTAMP
+
+    if not numbers:
+        raise HTTPException(
+            status_code=404,
+            detail="No phone number set"
+        )
+
+    if not alert or not alert.message:
+        raise HTTPException(
+            status_code=404,
+            detail="No alert set"
+        )
+    logger.debug(f"Alert\n{alert}")
+
+    # Multiple numbers with ';' are accepted
+    numbers = numbers.split(';')
+
+
+    # Escape single quotes here so we will stay in line
     try:
+        title = alert.title.replace("'", r"-")
+    except KeyError:
+        title = ''
 
-        global LAST_SENT_TIMESTAMP
+    try:
+        orgId = str(alert.orgId).replace("'", r"-")
+    except (KeyError, AttributeError, ValueError, TypeError):
+        orgId = ''
 
-        if not numbers:
-            raise HTTPException(
-                status_code=404,
-                detail="No phone number set"
-            )
+    try:
+        externalURL = alert.externalURL.replace("'", r"-")
+    except KeyError:
+        externalURL = ''
 
-        if not alert or not alert.message:
-            raise HTTPException(
-                status_code=404,
-                detail="No alert set"
-            )
-        logger.debug(f"Alert\n{alert}")
+    try:
+        message = alert.message.replace("'", r"-")
+    except KeyError:
+        message = ''
 
-        # Multiple numbers with ';' are accepted
-        numbers = numbers.split(';')
+    try:
+        supervision_name = config_dict["supervision_name"]
+    except KeyError:
+        supervision_name = "Supervision"
 
-
-        # Escape single quotes here so we will stay in line
-        try:
-            title = alert.title.replace("'", r"-")
-        except KeyError:
-            title = ''
-
-        try:
-            orgId = str(alert.orgId).replace("'", r"-")
-        except (KeyError, AttributeError, ValueError, TypeError):
-            orgId = ''
-
-        try:
-            externalURL = alert.externalURL.replace("'", r"-")
-        except KeyError:
-            externalURL = ''
-
-        try:
-            message = alert.message.replace("'", r"-")
-        except KeyError:
-            message = ''
-
-        try:
-            supervision_name = config_dict["supervision_name"]
-        except KeyError:
-            supervision_name = "Supervision"
-
-        try:
-            alert_max_length = config_dict["alert_max_length"]
-        except KeyError:
-            alert_max_length = 2500
-
-        try:
-            hard_min_interval = config_dict["min_interval"]
-        except KeyError:
-            hard_min_interval = None
-
-        #timestr = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
-        #alert_message = '{} org {} {}:\n{}\n{}'.format(supervision_name, orgId, timestr, title, message)
+    try:
         alert_header = '{} org {}:\n{}\n{}'.format(supervision_name, orgId, title, message)
 
         extracted_alerts = []
@@ -199,7 +184,7 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
 
         # Preflight check
         try:
-            sms_command = config_dict["sms_command"]
+            config_dict["sms_command"]
         except KeyError:
             logger.error("No sms commandline tool defined")
             raise HTTPException(
@@ -211,47 +196,58 @@ async def grafana(numbers: str, min_interval: Optional[int] = None, group: Optio
         for i in range(0, len(extracted_alerts)):
             alert_message += f'\n{extracted_alerts[i]}'
 
-        # Reduce alert to a specific length
-        alert_message_len = len(alert_message)
-        if alert_message_len > alert_max_length:
-            alert_message = alert_message[0:alert_max_length]
-            alert_message_len = len(alert_message)
-
         # Send alerts
         for number in numbers:
             number = number.replace("'", r"-")
-            if min_interval:
-                cur_timestamp = datetime.now(timezone.utc)
-
-                try:
-                    elapsed_time_since_last_sms_sent = (cur_timestamp - LAST_SENT_TIMESTAMP[number]["date"]).seconds
-                    if elapsed_time_since_last_sms_sent < min_interval:
-                        logger.info("Not sending an SMS since last SMS to {} was sent {} seconds ago, with minimum interval between sms being {}".format(number, elapsed_time_since_last_sms_sent, min_interval))
-                        continue
-
-                except KeyError:
-                    pass
-            LAST_SENT_TIMESTAMP[number] = {
-                "date": datetime.now(timezone.utc)
-            }
-
-            #if HAS_ALERTS:
-            #    LAST_SENT_TIMESTAMP[number]["labels"] = str(alert.alerts[i].labels)
-
             logger.info("Received alert {} for number {}".format(title, number))
-            parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
-            parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE}", "'{}'".format(alert_message))
-            parsed_sms_command = parsed_sms_command.replace("${ALERT_MESSAGE_LEN}", str(alert_message_len))
+            result = send_sms(number, message)
+            if not result:
+                content = {'status_code': 402, 'message': "Cannot send text to: {}".format(number), 'data': None}
+                return JSONResponse(content=content, status_code=status.HTTP_402_PAYMENT_REQUIRED)
+            content = {'status_code': 200, 'message': "Message sent to: {}".format(number), 'data': None}
+            return JSONResponse(content=content, status_code=status.HTTP_200_OK)
 
-            logger.info("sms_command: {}".format(parsed_sms_command))
-            exit_code, output = command_runner(parsed_sms_command)
-            if exit_code != 0:
-                logger.error("Could not send SMS, code {}: {}".format(exit_code, output))
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cannot send text: {}".format(output),
-                )
-            logger.info("Sent SMS to {}".format(number))
+    except Exception as exc:
+        exc_str = f"Exception {exc} occured"
+        logger.error(exc_str, exc_info=True)
+        raise HTTPException(
+                status_code=500,
+                detail=exc_str
+            )
+
+
+@app.post("/send/{numbers}")
+async def grafana(numbers: str, message: Message = None, auth=Depends(auth_scheme)):
+
+    if not numbers:
+        raise HTTPException(
+            status_code=404,
+            detail="No phone number set"
+        )
+    if not message:
+        raise HTTPException(
+            status_code=404,
+            detail="No message set"
+        )
+    if not message.message:
+        raise HTTPException(
+            status_code=404,
+            detail="No message content"
+        )
+    
+    try:
+        logger.debug(f"Message: {message}")
+        # Multiple numbers with ';' are accepted
+        numbers = numbers.split(';')
+        for number in numbers:
+            number = number.replace("'", r"-")
+            logger.info("Received direct send request for number {}".format(number))
+            result = send_sms(number, message.message)
+            if not result:
+                content = {'status_code': 402, 'message': "Cannot send text to: {}".format(number), 'data': None}
+                return JSONResponse(content=content, status_code=status.HTTP_402_PAYMENT_REQUIRED)
+            content = {'status_code': 200, 'message': "Message sent to: {}".format(number), 'data': None}
+            return JSONResponse(content=content, status_code=status.HTTP_200_OK)
     except Exception as exc:
         exc_str = f"Exception {exc} occured"
         logger.error(exc_str, exc_info=True)
