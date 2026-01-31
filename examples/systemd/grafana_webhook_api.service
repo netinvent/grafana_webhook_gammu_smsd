@@ -7,7 +7,7 @@ After=network.target
 #Group=myuser
 
 # Set this to whatever directory you installed the grafana_webhook_api to
-ExecStart=/opt/grafana_webhook_api/venv/bin/python /opt/grafana_webhook_api/server.py --config-file=/opt/grafana_webhook_api/grafana_webook_api.conf
+ExecStart=/opt/grafana_webhook_api/venv/bin/python /opt/grafana_webhook_api/server.py --config-file=/opt/grafana_webhook_api/grafana_webhook_api.conf
 WorkingDirectory=/opt/grafana_webhook_api
 Environment="PYTHONPATH=/opt/grafana_webhook_api"
 Restart=always
