@@ -7,7 +7,7 @@ __intname__ = "grafana_webhook_api.api"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023-2026 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2026013001"
+__build__ = "2026013101"
 __version__ = "2.0.0"
 __appname__ = "Grafana Alerts to commands"
 
@@ -155,11 +155,10 @@ async def grafana(
     except KeyError:
         supervision_name = "Supervision"
 
+    alert_header = "{} org {}:\n{}\n{}".format(
+        supervision_name, orgId, title, message
+    )
     try:
-        alert_header = "{} org {}:\n{}\n{}".format(
-            supervision_name, orgId, title, message
-        )
-
         extracted_alerts = []
         # Alert may not contain sub alerts
         try:
@@ -190,8 +189,8 @@ async def grafana(
                     pass
                 if extracted_alerts[i] is None:
                     extracted_alerts[i] = f"Cannot parse alert. See {__appname__} code"
-        except (KeyError, AttributeError, TypeError, IndexError):
-            pass
+        except (KeyError, AttributeError, TypeError, IndexError) as exc:
+            logger.debug(f"Sub alert message extraction failed: {exc}", exc_info=True)
 
         # Preflight check
         try:
@@ -208,7 +207,7 @@ async def grafana(
         for number in numbers:
             number = number.replace("'", r"-")
             logger.info("Received alert {} for number {}".format(title, number))
-            result = send_sms(number, message)
+            result = send_sms(number, alert_message)
             if not result:
                 content = {
                     "status_code": 402,

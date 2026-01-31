@@ -7,7 +7,7 @@ __intname__ = "grafana_webhook_api.sms"
 __author__ = "Orsiris de Jong"
 __copyright__ = "Copyright (C) 2023-2026 NetInvent"
 __license__ = "BSD-3 Clause"
-__build__ = "2026013001"
+__build__ = "2026013101"
 
 import logging
 from datetime import datetime, timezone, timedelta
@@ -99,7 +99,8 @@ def send_sms(number: str, message: str, min_interval: int = None):
     message_len = len(message)
     if message_len > sms_max_length:
         message = message[0 : (sms_max_length - 3)] + "..."
-        message_len = len(message_len)
+        # Update message length
+        message_len = len(message)
 
     parsed_sms_command = sms_command.replace("${NUMBER}", "'{}'".format(number))
     parsed_sms_command = parsed_sms_command.replace(
