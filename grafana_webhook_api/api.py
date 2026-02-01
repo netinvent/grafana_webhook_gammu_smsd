@@ -201,9 +201,7 @@ async def grafana(
             logger.error("No sms commandline tool defined")
             raise HTTPException(status_code=500, detail="Server not configured")
 
-        alert_header = "{} org {}: {}".format(
-            supervision_name, orgId, title
-        )
+        alert_header = "{} org {}: {}".format(supervision_name, orgId, title)
         if extracted_alerts:
             alert_message = alert_header
             for i in range(0, len(extracted_alerts)):
