@@ -155,14 +155,12 @@ async def grafana(
     except KeyError:
         supervision_name = "Supervision"
 
-    alert_header = "{} org {}:\n{}\n{}".format(
-        supervision_name, orgId, title, message
-    )
     try:
-        extracted_alerts = []
+        extracted_alerts = {}
         # Alert may not contain sub alerts
         try:
             for i in range(0, len(alert.alerts)):
+                """
                 try:
                     extracted_alerts[i] = "Alert: {}\n".format(
                         alert.alerts[i].labels["alertname"]
@@ -187,6 +185,10 @@ async def grafana(
                     )
                 except KeyError:
                     pass
+                """
+                extracted_alerts[i] = f"ALERT {alert.alerts[i].status}:\n"
+                for label, content in alert.alerts[i].labels.items():
+                    extracted_alerts[i] += f"- {label}={content}\n"
                 if extracted_alerts[i] is None:
                     extracted_alerts[i] = f"Cannot parse alert. See {__appname__} code"
         except (KeyError, AttributeError, TypeError, IndexError) as exc:
@@ -199,9 +201,15 @@ async def grafana(
             logger.error("No sms commandline tool defined")
             raise HTTPException(status_code=500, detail="Server not configured")
 
-        alert_message = alert_header
-        for i in range(0, len(extracted_alerts)):
-            alert_message += f"\n{extracted_alerts[i]}"
+        alert_header = "{} org {}: {}".format(
+            supervision_name, orgId, title
+        )
+        if extracted_alerts:
+            alert_message = alert_header
+            for i in range(0, len(extracted_alerts)):
+                alert_message += f"\n{extracted_alerts[i]}"
+        else:
+            alert_message = alert_header + f"\n{message}"
 
         # Send alerts
         for number in numbers:
