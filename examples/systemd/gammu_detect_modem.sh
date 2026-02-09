@@ -21,7 +21,7 @@ function log {
 }
 
 
-if ! type picocom > /dev/null 2&>1; then
+if ! type picocom > /dev/null 2>&1; then
     log "No picocom available"
     exit 1
 fi
